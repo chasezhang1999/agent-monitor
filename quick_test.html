@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>Quick Test</title></head>
+<body>
+    <h1>Quick API Test</h1>
+    <div id="result">Loading...</div>
+    <pre id="data"></pre>
+    
+    <script>
+        console.log('Script started');
+        
+        fetch('/api/report?days=30')
+            .then(res => {
+                console.log('Response:', res.status);
+                return res.json();
+            })
+            .then(data => {
+                console.log('Data:', data);
+                document.getElementById('result').innerHTML = 
+                    `<h2>✓ Data Loaded!</h2>
+                    <p>Cost: ¥${data.total_cost_cny.toFixed(2)}</p>
+                    <p>Tokens: ${data.total_tokens.toLocaleString()}</p>
+                    <p>Requests: ${data.total_requests}</p>`;
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('result').innerHTML = `<h2>✗ Error</h2><p>${err}</p>`;
+            });
+    </script>
+</body>
+</html>
