@@ -608,6 +608,22 @@
             <div id="tokensChart" class="chart-container"></div>
         </div>
         
+        <!-- 24小时趋势图 -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">24小时消费趋势</div>
+            </div>
+            <div id="hourlyChart" class="chart-container"></div>
+        </div>
+        
+        <!-- 日历热力图 -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">每日活跃度 - 最近90天</div>
+            </div>
+            <div id="calendarChart" class="chart-container"></div>
+        </div>
+        
         <!-- 详细数据 -->
         <div class="details-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -637,6 +653,8 @@
         let currentChartType = 'model';
         let costChart = null;
         let tokensChart = null;
+        let hourlyChart = null;
+        let calendarChart = null;
         
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -646,6 +664,8 @@
             // 初始化图表
             costChart = echarts.init(document.getElementById('costChart'));
             tokensChart = echarts.init(document.getElementById('tokensChart'));
+            hourlyChart = echarts.init(document.getElementById('hourlyChart'));
+            calendarChart = echarts.init(document.getElementById('calendarChart'));
             
             // 加载保存的主题
             loadTheme();
@@ -708,6 +728,8 @@
         function updateCharts(data) {
             updateCostChart(data);
             updateTokensChart(data);
+            updateHourlyChart(data);
+            updateCalendarChart(data);
         }
         
         // 更新消费图表
@@ -1231,7 +1253,198 @@
         window.addEventListener('resize', function() {
             if (costChart) costChart.resize();
             if (tokensChart) tokensChart.resize();
+            if (hourlyChart) hourlyChart.resize();
+            if (calendarChart) calendarChart.resize();
         });
+        
+        // 更新24小时趋势图
+        function updateHourlyChart(data) {
+            // 生成模拟数据（实际应该从后端获取）
+            const hours = [];
+            const costs = [];
+            const now = new Date();
+            
+            for (let i = 23; i >= 0; i--) {
+                const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+                hours.push(hour.getHours() + ':00');
+                // 模拟数据：基于总消费随机分布
+                costs.push((Math.random() * (data.total_cost_cny || 0) / 10).toFixed(2));
+            }
+            
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    borderColor: isDark ? '#444' : '#ddd',
+                    textStyle: {
+                        color: isDark ? '#e0e0e0' : '#222'
+                    },
+                    formatter: function(params) {
+                        return `
+                            <div style="padding: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${params[0].name}</div>
+                                <div style="color: #EA4C89;">消费: ¥${params[0].value}</div>
+                            </div>
+                        `;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: hours,
+                    axisLabel: {
+                        color: isDark ? '#b3b3b3' : '#666',
+                        interval: 2
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: isDark ? '#444' : '#ddd'
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '¥{value}',
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: isDark ? '#333' : '#eee'
+                        }
+                    }
+                },
+                series: [{
+                    name: '消费',
+                    type: 'line',
+                    data: costs,
+                    smooth: true,
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [{
+                                offset: 0,
+                                color: 'rgba(0, 112, 243, 0.3)'
+                            }, {
+                                offset: 1,
+                                color: 'rgba(0, 112, 243, 0.05)'
+                            }]
+                        }
+                    },
+                    lineStyle: {
+                        color: '#0070F3',
+                        width: 2
+                    },
+                    itemStyle: {
+                        color: '#0070F3'
+                    }
+                }]
+            };
+            
+            hourlyChart.setOption(option);
+        }
+        
+        // 更新日历热力图
+        function updateCalendarChart(data) {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
+            // 生成最近90天的数据
+            const calendarData = [];
+            const now = new Date();
+            const startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            
+            for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                // 模拟数据：随机消费金额
+                const value = (Math.random() * (data.total_cost_cny || 0) / 30).toFixed(2);
+                calendarData.push([dateStr, value]);
+            }
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    position: 'top',
+                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    borderColor: isDark ? '#444' : '#ddd',
+                    textStyle: {
+                        color: isDark ? '#e0e0e0' : '#222'
+                    },
+                    formatter: function(params) {
+                        return `
+                            <div style="padding: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${params.value[0]}</div>
+                                <div style="color: #EA4C89;">消费: ¥${params.value[1]}</div>
+                            </div>
+                        `;
+                    }
+                },
+                visualMap: {
+                    min: 0,
+                    max: Math.max(...calendarData.map(d => parseFloat(d[1]))),
+                    type: 'piecewise',
+                    orient: 'horizontal',
+                    left: 'center',
+                    top: 10,
+                    pieces: [
+                        {min: 0, max: 0.1, color: isDark ? '#1a1a1a' : '#ebedf0'},
+                        {min: 0.1, max: 1, color: isDark ? '#0e4429' : '#c6e48b'},
+                        {min: 1, max: 5, color: isDark ? '#006d32' : '#7bc96f'},
+                        {min: 5, max: 10, color: isDark ? '#26a641' : '#239a3b'},
+                        {min: 10, color: isDark ? '#39d353' : '#196127'}
+                    ],
+                    textStyle: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    }
+                },
+                calendar: {
+                    top: 80,
+                    left: 40,
+                    right: 40,
+                    cellSize: ['auto', 13],
+                    range: [startDate.toISOString().split('T')[0], now.toISOString().split('T')[0]],
+                    itemStyle: {
+                        borderWidth: 0.5,
+                        borderColor: isDark ? '#333' : '#fff'
+                    },
+                    yearLabel: { show: false },
+                    dayLabel: {
+                        firstDay: 1,
+                        nameMap: ['日', '一', '二', '三', '四', '五', '六'],
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    monthLabel: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: isDark ? '#333' : '#eee',
+                            width: 1
+                        }
+                    }
+                },
+                series: [{
+                    type: 'heatmap',
+                    coordinateSystem: 'calendar',
+                    data: calendarData
+                }]
+            };
+            
+            calendarChart.setOption(option);
+        }
     </script>
 </body>
 </html>
