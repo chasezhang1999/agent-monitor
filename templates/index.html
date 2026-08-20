@@ -1051,6 +1051,11 @@
                 sorted.forEach(([key, stats]) => {
                     const card = document.createElement('div');
                     card.className = 'model-card';
+                    
+                    const totalTokens = (stats.input_tokens || 0) + (stats.output_tokens || 0) + (stats.reasoning_tokens || 0);
+                    const cacheHitRate = ((stats.cache_read_tokens || 0) / (totalTokens + (stats.cache_read_tokens || 0) + (stats.cache_write_tokens || 0) || 1) * 100).toFixed(1);
+                    const avgCost = ((stats.actual_cost_cny || 0) / (stats.request_count || 1)).toFixed(4);
+                    
                     card.innerHTML = `
                         <div class="model-header" onclick="toggleModelDetails(this)">
                             <div>
@@ -1062,29 +1067,50 @@
                             <div class="model-cost">¥${(stats.actual_cost_cny || 0).toFixed(2)}</div>
                         </div>
                         <div class="model-details">
-                            <div class="detail-item">
-                                <span class="detail-label">请求次数</span>
-                                <span class="detail-value">${formatNumber(stats.request_count || 0)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Input Tokens</span>
-                                <span class="detail-value">${formatNumber(stats.input_tokens || 0)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Output Tokens</span>
-                                <span class="detail-value">${formatNumber(stats.output_tokens || 0)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Reasoning Tokens</span>
-                                <span class="detail-value">${formatNumber(stats.reasoning_tokens || 0)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Cache Read</span>
-                                <span class="detail-value">${formatNumber(stats.cache_read_tokens || 0)}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Cache Write</span>
-                                <span class="detail-value">${formatNumber(stats.cache_write_tokens || 0)}</span>
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                                    <div class="detail-item">
+                                        <span class="detail-label">请求次数</span>
+                                        <span class="detail-value">${formatNumber(stats.request_count || 0)}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">总消费</span>
+                                        <span class="detail-value" style="color: var(--accent);">¥${(stats.actual_cost_cny || 0).toFixed(4)}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">平均每次</span>
+                                        <span class="detail-value">¥${avgCost}</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: var(--background); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">💰 价格明细</div>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px;">
+                                        <div>Input: ${formatNumber(stats.input_tokens || 0)}</div>
+                                        <div style="text-align: right; color: var(--text-muted);">约 ¥${((stats.input_tokens || 0) * 0.001).toFixed(4)}</div>
+                                        <div>Output: ${formatNumber(stats.output_tokens || 0)}</div>
+                                        <div style="text-align: right; color: var(--text-muted);">约 ¥${((stats.output_tokens || 0) * 0.001).toFixed(4)}</div>
+                                        <div>Reasoning: ${formatNumber(stats.reasoning_tokens || 0)}</div>
+                                        <div style="text-align: right; color: var(--text-muted);">约 ¥${((stats.reasoning_tokens || 0) * 0.001).toFixed(4)}</div>
+                                        <div>Cache Read: ${formatNumber(stats.cache_read_tokens || 0)}</div>
+                                        <div style="text-align: right; color: var(--text-muted);">约 ¥${((stats.cache_read_tokens || 0) * 0.0001).toFixed(4)}</div>
+                                        <div>Cache Write: ${formatNumber(stats.cache_write_tokens || 0)}</div>
+                                        <div style="text-align: right; color: var(--text-muted);">约 ¥${((stats.cache_write_tokens || 0) * 0.001).toFixed(4)}</div>
+                                        <div style="border-top: 1px solid var(--border); padding-top: 8px; font-weight: 600;">总计</div>
+                                        <div style="border-top: 1px solid var(--border); padding-top: 8px; text-align: right; font-weight: 600; color: var(--accent);">¥${(stats.actual_cost_cny || 0).toFixed(4)}</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px;">
+                                    <div class="detail-item">
+                                        <span class="detail-label">缓存命中率</span>
+                                        <span class="detail-value">${cacheHitRate}%</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">总 Tokens</span>
+                                        <span class="detail-value">${formatNumber(totalTokens)}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;
