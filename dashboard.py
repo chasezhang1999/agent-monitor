@@ -99,7 +99,13 @@ def create_app(monitor_instance=None):
             
             # 新增：按模型-供应商组合
             report['by_model_provider'] = {}
-            for record in self._get_all_records(days):
+            
+            # 获取所有记录
+            hermes_records = monitor.collect_hermes_usage(days)
+            opencode_records = monitor.collect_opencode_usage(days)
+            all_records = hermes_records + opencode_records
+            
+            for record in all_records:
                 key = f"{record.model}@{record.provider_display}"
                 if key not in report['by_model_provider']:
                     report['by_model_provider'][key] = {
@@ -291,12 +297,6 @@ def create_app(monitor_instance=None):
             cursor.execute('DELETE FROM report_cache')
             conn.commit()
             conn.close()
-    
-    def _get_all_records(self, days):
-        """获取所有记录（辅助方法）"""
-        hermes_records = self.monitor.collect_hermes_usage(days)
-        opencode_records = self.monitor.collect_opencode_usage(days)
-        return hermes_records + opencode_records
     
     @app.route('/api/records')
     def api_records():
