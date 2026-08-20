@@ -16,7 +16,7 @@
         }
         
         :root {
-            /* DeepSeek 配色方案 */
+            /* DeepSeek 配色方案 - Light */
             --primary: #0070F3;
             --accent: #EA4C89;
             --success: #1FC16B;
@@ -27,6 +27,20 @@
             --text-secondary: #666666;
             --text-muted: #999999;
             --border: #EEF0F2;
+        }
+        
+        /* Dark Mode */
+        [data-theme="dark"] {
+            --primary: #0070F3;
+            --accent: #EA4C89;
+            --success: #1FC16B;
+            --warning: #F6AD55;
+            --background: #191919;
+            --card-bg: #2A2A2A;
+            --text-primary: #E0E0E0;
+            --text-secondary: #B3B3B3;
+            --text-muted: #707070;
+            --border: #333333;
         }
         
         body {
@@ -409,6 +423,10 @@
             
             <div style="flex: 1"></div>
             
+            <button class="btn-secondary" onclick="toggleTheme()" id="themeBtn" title="切换主题">
+                🌙 夜间
+            </button>
+            
             {% if multi_enabled %}
             <button onclick="syncData()" id="syncBtn">
                 🔄 同步数据
@@ -483,6 +501,9 @@
             // 初始化图表
             costChart = echarts.init(document.getElementById('costChart'));
             tokensChart = echarts.init(document.getElementById('tokensChart'));
+            
+            // 加载保存的主题
+            loadTheme();
         });
         
         // 加载机器列表
@@ -557,11 +578,19 @@
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 10);
             
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
             const option = {
+                backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: {
                         type: 'shadow'
+                    },
+                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                    borderColor: isDark ? '#444' : '#ddd',
+                    textStyle: {
+                        color: isDark ? '#e0e0e0' : '#222'
                     }
                 },
                 grid: {
@@ -574,12 +603,31 @@
                 xAxis: {
                     type: 'value',
                     axisLabel: {
-                        formatter: '¥{value}'
+                        formatter: '¥{value}',
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: isDark ? '#444' : '#ddd'
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: isDark ? '#333' : '#eee'
+                        }
                     }
                 },
                 yAxis: {
                     type: 'category',
-                    data: items.map(i => i.name).reverse()
+                    data: items.map(i => i.name).reverse(),
+                    axisLabel: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: isDark ? '#444' : '#ddd'
+                        }
+                    }
                 },
                 series: [{
                     name: '消费金额',
@@ -608,15 +656,26 @@
                 .sort((a, b) => (b.input + b.output + b.reasoning) - (a.input + a.output + a.reasoning))
                 .slice(0, 10);
             
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
             const option = {
+                backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: {
                         type: 'shadow'
+                    },
+                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                    borderColor: isDark ? '#444' : '#ddd',
+                    textStyle: {
+                        color: isDark ? '#e0e0e0' : '#222'
                     }
                 },
                 legend: {
-                    data: ['Input', 'Output', 'Reasoning']
+                    data: ['Input', 'Output', 'Reasoning'],
+                    textStyle: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    }
                 },
                 grid: {
                     left: '3%',
@@ -632,12 +691,31 @@
                             if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
                             if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
                             return value;
+                        },
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: isDark ? '#444' : '#ddd'
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: isDark ? '#333' : '#eee'
                         }
                     }
                 },
                 yAxis: {
                     type: 'category',
-                    data: items.map(i => i.name).reverse()
+                    data: items.map(i => i.name).reverse(),
+                    axisLabel: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: isDark ? '#444' : '#ddd'
+                        }
+                    }
                 },
                 series: [
                     {
@@ -786,6 +864,35 @@
             if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
             if (n >= 1000) return (n / 1000).toFixed(2) + 'K';
             return n.toString();
+        }
+        
+        // 主题切换
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // 更新按钮文字
+            const btn = document.getElementById('themeBtn');
+            btn.textContent = newTheme === 'dark' ? '☀️ 日间' : '🌙 夜间';
+            
+            // 重新渲染图表（适配主题）
+            if (currentData) {
+                updateCharts(currentData);
+            }
+        }
+        
+        // 加载主题
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const btn = document.getElementById('themeBtn');
+            if (btn) {
+                btn.textContent = savedTheme === 'dark' ? '☀️ 日间' : '🌙 夜间';
+            }
         }
         
         // 响应式图表

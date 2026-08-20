@@ -56,9 +56,43 @@ def create_app(monitor_instance=None):
             report['source'] = 'multi_machine'
         else:
             # 单机模式或请求特定机器
-            report = monitor.get_report(days)
-            report['is_aggregated'] = False
-            report['source'] = 'local'
+            raw_report = monitor.get_report(days)
+            
+            # 转换数据格式以匹配前端期望
+            stats = raw_report.get('statistics', {})
+            total = stats.get('total', {})
+            
+            report = {
+                'total_cost_cny': total.get('actual_cost_cny', 0),
+                'total_tokens': total.get('total_tokens', 0),
+                'total_requests': total.get('api_calls', 0),
+                'by_model': {},
+                'by_provider': {},
+                'is_aggregated': False,
+                'source': 'local',
+                'generated_at': raw_report.get('generated_at'),
+                'period_days': raw_report.get('period_days')
+            }
+            
+            # 转换 by_model
+            for model, model_stats in stats.get('by_model', {}).items():
+                report['by_model'][model] = {
+                    'request_count': model_stats.get('api_calls', 0),
+                    'input_tokens': model_stats.get('input_tokens', 0),
+                    'output_tokens': model_stats.get('output_tokens', 0),
+                    'reasoning_tokens': model_stats.get('reasoning_tokens', 0),
+                    'cache_read_tokens': model_stats.get('cache_read_tokens', 0),
+                    'cache_write_tokens': model_stats.get('cache_write_tokens', 0),
+                    'actual_cost_cny': model_stats.get('actual_cost_cny', 0)
+                }
+            
+            # 转换 by_provider
+            for provider, prov_stats in stats.get('by_provider', {}).items():
+                report['by_provider'][provider] = {
+                    'request_count': prov_stats.get('api_calls', 0),
+                    'tokens': prov_stats.get('total_tokens', 0),
+                    'cost_cny': prov_stats.get('actual_cost_cny', 0)
+                }
             
             # 添加本机标识
             from multi_machine import MachineIdentifier
