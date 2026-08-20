@@ -93,8 +93,35 @@ def create_app(monitor_instance=None):
                     'reasoning_tokens': model_stats.get('reasoning_tokens', 0),
                     'cache_read_tokens': model_stats.get('cache_read_tokens', 0),
                     'cache_write_tokens': model_stats.get('cache_write_tokens', 0),
-                    'actual_cost_cny': model_stats.get('actual_cost_cny', 0)
+                    'actual_cost_cny': model_stats.get('actual_cost_cny', 0),
+                    'provider': model_stats.get('provider', 'unknown')  # 添加 provider
                 }
+            
+            # 新增：按模型-供应商组合
+            report['by_model_provider'] = {}
+            for record in self._get_all_records(days):
+                key = f"{record.model}@{record.provider_display}"
+                if key not in report['by_model_provider']:
+                    report['by_model_provider'][key] = {
+                        'model': record.model,
+                        'provider': record.provider_display,
+                        'request_count': 0,
+                        'input_tokens': 0,
+                        'output_tokens': 0,
+                        'reasoning_tokens': 0,
+                        'cache_read_tokens': 0,
+                        'cache_write_tokens': 0,
+                        'actual_cost_cny': 0
+                    }
+                
+                mp = report['by_model_provider'][key]
+                mp['request_count'] += record.api_calls
+                mp['input_tokens'] += record.input_tokens
+                mp['output_tokens'] += record.output_tokens
+                mp['reasoning_tokens'] += record.reasoning_tokens
+                mp['cache_read_tokens'] += record.cache_read_tokens
+                mp['cache_write_tokens'] += record.cache_write_tokens
+                mp['actual_cost_cny'] += record.actual_cost_cny
             
             # 转换 by_provider
             for provider, prov_stats in stats.get('by_provider', {}).items():
@@ -264,6 +291,12 @@ def create_app(monitor_instance=None):
             cursor.execute('DELETE FROM report_cache')
             conn.commit()
             conn.close()
+    
+    def _get_all_records(self, days):
+        """获取所有记录（辅助方法）"""
+        hermes_records = self.monitor.collect_hermes_usage(days)
+        opencode_records = self.monitor.collect_opencode_usage(days)
+        return hermes_records + opencode_records
     
     @app.route('/api/records')
     def api_records():

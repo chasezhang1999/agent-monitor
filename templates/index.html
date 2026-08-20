@@ -629,8 +629,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h2 class="section-title">按模型详情</h2>
                 <div class="view-toggle">
-                    <button class="toggle-btn active" onclick="switchView('card')">卡片视图</button>
-                    <button class="toggle-btn" onclick="switchView('table')">表格视图</button>
+                    <button class="toggle-btn active" onclick="switchView('model')">按模型</button>
+                    <button class="toggle-btn" onclick="switchView('provider')">按供应商</button>
                 </div>
             </div>
             <div id="modelDetails"></div>
@@ -651,6 +651,7 @@
     <script>
         let currentData = null;
         let currentChartType = 'model';
+        let currentDetailView = 'model'; // 'model' or 'provider'
         let costChart = null;
         let tokensChart = null;
         let hourlyChart = null;
@@ -966,51 +967,107 @@
         
         // 更新模型详情
         function updateModelDetails(data) {
-            if (!data.by_model) return;
-            
             const container = document.getElementById('modelDetails');
             container.innerHTML = '';
             
-            const sorted = Object.entries(data.by_model)
-                .sort(([,a], [,b]) => (b.actual_cost_cny || 0) - (a.actual_cost_cny || 0));
-            
-            sorted.forEach(([model, stats]) => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.innerHTML = `
-                    <div class="model-header" onclick="toggleModelDetails(this)">
-                        <div class="model-name">${model}</div>
-                        <div class="model-cost">¥${(stats.actual_cost_cny || 0).toFixed(2)}</div>
-                    </div>
-                    <div class="model-details">
-                        <div class="detail-item">
-                            <span class="detail-label">请求次数</span>
-                            <span class="detail-value">${formatNumber(stats.request_count || 0)}</span>
+            if (currentDetailView === 'model') {
+                // 按模型分组
+                if (!data.by_model) return;
+                
+                const sorted = Object.entries(data.by_model)
+                    .sort(([,a], [,b]) => (b.actual_cost_cny || 0) - (a.actual_cost_cny || 0));
+                
+                sorted.forEach(([model, stats]) => {
+                    const card = document.createElement('div');
+                    card.className = 'model-card';
+                    
+                    const providerBadge = stats.provider ? 
+                        `<span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">@ ${stats.provider}</span>` : '';
+                    
+                    card.innerHTML = `
+                        <div class="model-header" onclick="toggleModelDetails(this)">
+                            <div class="model-name">${model}${providerBadge}</div>
+                            <div class="model-cost">¥${(stats.actual_cost_cny || 0).toFixed(2)}</div>
                         </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Input Tokens</span>
-                            <span class="detail-value">${formatNumber(stats.input_tokens || 0)}</span>
+                        <div class="model-details">
+                            <div class="detail-item">
+                                <span class="detail-label">请求次数</span>
+                                <span class="detail-value">${formatNumber(stats.request_count || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Input Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.input_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Output Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.output_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Reasoning Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.reasoning_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Cache Read</span>
+                                <span class="detail-value">${formatNumber(stats.cache_read_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Cache Write</span>
+                                <span class="detail-value">${formatNumber(stats.cache_write_tokens || 0)}</span>
+                            </div>
                         </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Output Tokens</span>
-                            <span class="detail-value">${formatNumber(stats.output_tokens || 0)}</span>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                // 按模型-供应商组合
+                if (!data.by_model_provider) return;
+                
+                const sorted = Object.entries(data.by_model_provider)
+                    .sort(([,a], [,b]) => (b.actual_cost_cny || 0) - (a.actual_cost_cny || 0));
+                
+                sorted.forEach(([key, stats]) => {
+                    const card = document.createElement('div');
+                    card.className = 'model-card';
+                    card.innerHTML = `
+                        <div class="model-header" onclick="toggleModelDetails(this)">
+                            <div>
+                                <div class="model-name">${stats.model}</div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                                    供应商: ${stats.provider}
+                                </div>
+                            </div>
+                            <div class="model-cost">¥${(stats.actual_cost_cny || 0).toFixed(2)}</div>
                         </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Reasoning Tokens</span>
-                            <span class="detail-value">${formatNumber(stats.reasoning_tokens || 0)}</span>
+                        <div class="model-details">
+                            <div class="detail-item">
+                                <span class="detail-label">请求次数</span>
+                                <span class="detail-value">${formatNumber(stats.request_count || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Input Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.input_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Output Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.output_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Reasoning Tokens</span>
+                                <span class="detail-value">${formatNumber(stats.reasoning_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Cache Read</span>
+                                <span class="detail-value">${formatNumber(stats.cache_read_tokens || 0)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Cache Write</span>
+                                <span class="detail-value">${formatNumber(stats.cache_write_tokens || 0)}</span>
+                            </div>
                         </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Cache Read</span>
-                            <span class="detail-value">${formatNumber(stats.cache_read_tokens || 0)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Cache Write</span>
-                            <span class="detail-value">${formatNumber(stats.cache_write_tokens || 0)}</span>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+                    `;
+                    container.appendChild(card);
+                });
+            }
         }
         
         // 展开/折叠模型详情
@@ -1164,9 +1221,9 @@
             });
             event.target.classList.add('active');
             
-            // TODO: 实现表格视图
-            if (view === 'table') {
-                alert('表格视图开发中...');
+            currentDetailView = view;
+            if (currentData) {
+                updateModelDetails(currentData);
             }
         }
         
