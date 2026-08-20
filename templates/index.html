@@ -366,6 +366,133 @@
                 width: 100%;
             }
         }
+        
+        /* 视图切换 */
+        .view-toggle {
+            display: flex;
+            gap: 0;
+            background: var(--border);
+            border-radius: 8px;
+            padding: 2px;
+        }
+        
+        .toggle-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .toggle-btn.active {
+            background: var(--background);
+            color: var(--text-primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: var(--background);
+            border-radius: 16px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            color: var(--text-primary);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            text-align: center;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        /* 价格公式 */
+        .price-formula {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .formula-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        
+        .formula-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .formula-line:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .formula-label {
+            color: var(--text-secondary);
+        }
+        
+        .formula-value {
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
@@ -483,8 +610,25 @@
         
         <!-- 详细数据 -->
         <div class="details-section">
-            <h2 class="section-title">按模型详情</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 class="section-title">按模型详情</h2>
+                <div class="view-toggle">
+                    <button class="toggle-btn active" onclick="switchView('card')">卡片视图</button>
+                    <button class="toggle-btn" onclick="switchView('table')">表格视图</button>
+                </div>
+            </div>
             <div id="modelDetails"></div>
+        </div>
+        
+        <!-- 模型详情弹窗 -->
+        <div id="modelModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">模型详情</h2>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+            </div>
         </div>
     </div>
     
@@ -575,7 +719,8 @@
             const items = Object.entries(byData)
                 .map(([name, stats]) => ({
                     name,
-                    value: stats.actual_cost_cny || stats.cost_cny || 0
+                    value: stats.actual_cost_cny || stats.cost_cny || 0,
+                    stats: stats
                 }))
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 10);
@@ -587,12 +732,31 @@
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: {
-                        type: 'shadow'
+                        type: 'shadow',
+                        shadowStyle: {
+                            color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                        }
                     },
-                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: isDark ? 'rgba(50, 50, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                     borderColor: isDark ? '#444' : '#ddd',
                     textStyle: {
                         color: isDark ? '#e0e0e0' : '#222'
+                    },
+                    formatter: function(params) {
+                        const item = items.find(i => i.name === params[0].name);
+                        if (!item) return '';
+                        
+                        const stats = item.stats;
+                        return `
+                            <div style="padding: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">${item.name}</div>
+                                <div style="color: ${isDark ? '#b3b3b3' : '#666'}; font-size: 12px;">
+                                    消费金额: <span style="color: #EA4C89; font-weight: 600;">¥${item.value.toFixed(2)}</span><br/>
+                                    请求次数: ${formatNumber(stats.request_count || 0)}<br/>
+                                    总 Tokens: ${formatNumber((stats.input_tokens || 0) + (stats.output_tokens || 0) + (stats.reasoning_tokens || 0))}
+                                </div>
+                            </div>
+                        `;
                     }
                 },
                 grid: {
@@ -636,10 +800,25 @@
                     type: 'bar',
                     data: items.map(i => i.value).reverse(),
                     itemStyle: {
-                        color: '#0070F3'
-                    }
+                        color: 'rgba(0, 112, 243, 0.7)',
+                        borderRadius: [0, 4, 4, 0]
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            color: 'rgba(0, 112, 243, 1)'
+                        }
+                    },
+                    barWidth: '60%'
                 }]
             };
+            
+            // 添加点击事件
+            costChart.off('click');
+            costChart.on('click', function(params) {
+                if (currentChartType === 'model') {
+                    showModelDetail(params.name);
+                }
+            });
             
             costChart.setOption(option);
         }
@@ -816,6 +995,157 @@
         function toggleModelDetails(header) {
             const details = header.nextElementSibling;
             details.classList.toggle('show');
+        }
+        
+        // 显示模型详情弹窗
+        function showModelDetail(modelName) {
+            if (!currentData || !currentData.by_model || !currentData.by_model[modelName]) {
+                return;
+            }
+            
+            const stats = currentData.by_model[modelName];
+            const modal = document.getElementById('modelModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            
+            title.textContent = `${modelName} - 详细信息`;
+            
+            // 构建详情内容
+            const totalTokens = (stats.input_tokens || 0) + (stats.output_tokens || 0) + (stats.reasoning_tokens || 0);
+            
+            body.innerHTML = `
+                <div class="price-formula">
+                    <div class="formula-title">💰 价格计算公式</div>
+                    <div class="formula-line">
+                        <span class="formula-label">Input Tokens</span>
+                        <span class="formula-value">${formatNumber(stats.input_tokens || 0)} × 单价 = ¥${((stats.input_tokens || 0) * 0.001).toFixed(4)}</span>
+                    </div>
+                    <div class="formula-line">
+                        <span class="formula-label">Output Tokens</span>
+                        <span class="formula-value">${formatNumber(stats.output_tokens || 0)} × 单价 = ¥${((stats.output_tokens || 0) * 0.001).toFixed(4)}</span>
+                    </div>
+                    <div class="formula-line">
+                        <span class="formula-label">Reasoning Tokens</span>
+                        <span class="formula-value">${formatNumber(stats.reasoning_tokens || 0)} × 单价 = ¥${((stats.reasoning_tokens || 0) * 0.001).toFixed(4)}</span>
+                    </div>
+                    <div class="formula-line">
+                        <span class="formula-label">Cache Read</span>
+                        <span class="formula-value">${formatNumber(stats.cache_read_tokens || 0)} × 单价 = ¥${((stats.cache_read_tokens || 0) * 0.0001).toFixed(4)}</span>
+                    </div>
+                    <div class="formula-line">
+                        <span class="formula-label">Cache Write</span>
+                        <span class="formula-value">${formatNumber(stats.cache_write_tokens || 0)} × 单价 = ¥${((stats.cache_write_tokens || 0) * 0.001).toFixed(4)}</span>
+                    </div>
+                    <div class="formula-line">
+                        <span class="formula-label">总计</span>
+                        <span class="formula-value">¥${(stats.actual_cost_cny || 0).toFixed(4)}</span>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0;">
+                    <div class="stat-card">
+                        <div class="stat-label">请求次数</div>
+                        <div class="stat-value" style="font-size: 24px;">${formatNumber(stats.request_count || 0)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">总 Tokens</div>
+                        <div class="stat-value" style="font-size: 24px;">${formatNumber(totalTokens)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">缓存命中率</div>
+                        <div class="stat-value" style="font-size: 24px;">${((stats.cache_read_tokens || 0) / (totalTokens + (stats.cache_read_tokens || 0)) * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+                
+                <div style="height: 300px; margin-top: 16px;" id="modelDetailChart"></div>
+            `;
+            
+            modal.classList.add('show');
+            
+            // 渲染详细图表
+            setTimeout(() => {
+                renderModelDetailChart(modelName, stats);
+            }, 100);
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            const modal = document.getElementById('modelModal');
+            modal.classList.remove('show');
+        }
+        
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('modelModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // 渲染模型详情图表
+        function renderModelDetailChart(modelName, stats) {
+            const chartDom = document.getElementById('modelDetailChart');
+            if (!chartDom) return;
+            
+            const chart = echarts.init(chartDom);
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center',
+                    textStyle: {
+                        color: isDark ? '#b3b3b3' : '#666'
+                    }
+                },
+                series: [
+                    {
+                        name: 'Token 分布',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['40%', '50%'],
+                        data: [
+                            { value: stats.input_tokens || 0, name: 'Input', itemStyle: { color: 'rgba(160, 220, 253, 0.8)' } },
+                            { value: stats.output_tokens || 0, name: 'Output', itemStyle: { color: 'rgba(96, 179, 254, 0.8)' } },
+                            { value: stats.reasoning_tokens || 0, name: 'Reasoning', itemStyle: { color: 'rgba(12, 112, 243, 0.8)' } },
+                            { value: stats.cache_read_tokens || 0, name: 'Cache Read', itemStyle: { color: 'rgba(31, 193, 107, 0.8)' } },
+                            { value: stats.cache_write_tokens || 0, name: 'Cache Write', itemStyle: { color: 'rgba(246, 173, 85, 0.8)' } }
+                        ],
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        label: {
+                            show: true,
+                            formatter: '{b}\n{d}%'
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 切换视图
+        function switchView(view) {
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // TODO: 实现表格视图
+            if (view === 'table') {
+                alert('表格视图开发中...');
+            }
         }
         
         // 同步数据
