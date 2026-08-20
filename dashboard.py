@@ -38,6 +38,16 @@ def create_app(monitor_instance=None):
                              multi_enabled=multi_enabled,
                              show_machine_filter=multi_config.get('show_machine_filter', True))
     
+    @app.route('/debug')
+    def debug_page():
+        """调试页面"""
+        return render_template('debug.html')
+    
+    @app.route('/test')
+    def test_page():
+        """测试页面"""
+        return app.send_static_file('../test_frontend.html')
+    
     @app.route('/config')
     def config_page():
         """价格配置页面"""

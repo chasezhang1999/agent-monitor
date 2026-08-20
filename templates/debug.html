@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>前端调试 - Agent Monitor</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>前端数据加载调试</h1>
+    
+    <h2>步骤 1: 测试 API</h2>
+    <button onclick="testAPI()">点击测试 API</button>
+    <div id="apiResult"></div>
+    
+    <h2>步骤 2: 检查数据结构</h2>
+    <div id="dataCheck"></div>
+    
+    <h2>步骤 3: 原始 JSON</h2>
+    <pre id="rawJSON"></pre>
+    
+    <h2>控制台日志</h2>
+    <div id="console"></div>
+    
+    <script>
+        const consoleDiv = document.getElementById('console');
+        
+        function log(msg, type = 'info') {
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            consoleDiv.appendChild(p);
+            console.log(msg);
+        }
+        
+        async function testAPI() {
+            log('开始测试 API...');
+            
+            try {
+                log('发送请求到 /api/report?days=30');
+                const response = await fetch('/api/report?days=30');
+                
+                log(`响应状态: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                log('解析 JSON...');
+                const data = await response.json();
+                
+                log('✓ JSON 解析成功', 'success');
+                
+                // 显示原始 JSON
+                document.getElementById('rawJSON').textContent = JSON.stringify(data, null, 2);
+                
+                // 检查关键字段
+                const checks = [
+                    { name: 'total_cost_cny', value: data.total_cost_cny },
+                    { name: 'total_tokens', value: data.total_tokens },
+                    { name: 'total_requests', value: data.total_requests },
+                    { name: 'by_model', value: data.by_model ? Object.keys(data.by_model).length + ' 个模型' : 'undefined' },
+                    { name: 'by_provider', value: data.by_provider ? Object.keys(data.by_provider).length + ' 个 provider' : 'undefined' }
+                ];
+                
+                let html = '<table border="1" cellpadding="5"><tr><th>字段</th><th>值</th><th>状态</th></tr>';
+                
+                checks.forEach(check => {
+                    const exists = check.value !== undefined && check.value !== null;
+                    const status = exists ? '✓' : '✗';
+                    const color = exists ? 'green' : 'red';
+                    html += `<tr><td>${check.name}</td><td>${check.value}</td><td style="color:${color}">${status}</td></tr>`;
+                    log(`  ${check.name}: ${check.value} ${status}`, exists ? 'success' : 'error');
+                });
+                
+                html += '</table>';
+                document.getElementById('dataCheck').innerHTML = html;
+                
+                // 模拟前端更新
+                log('模拟前端 updateUI()...');
+                if (data.total_cost_cny !== undefined) {
+                    log(`  累计消费: ¥${data.total_cost_cny.toFixed(2)}`, 'success');
+                } else {
+                    log('  ✗ total_cost_cny 缺失', 'error');
+                }
+                
+                if (data.by_model) {
+                    const modelCount = Object.keys(data.by_model).length;
+                    log(`  模型数量: ${modelCount}`, 'success');
+                    
+                    Object.entries(data.by_model).forEach(([model, stats]) => {
+                        log(`    - ${model}: ¥${stats.actual_cost_cny.toFixed(2)}`);
+                    });
+                } else {
+                    log('  ✗ by_model 缺失', 'error');
+                }
+                
+                document.getElementById('apiResult').innerHTML = '<p class="success">✓ API 测试成功！数据正常</p>';
+                
+            } catch (error) {
+                log(`✗ 错误: ${error.message}`, 'error');
+                document.getElementById('apiResult').innerHTML = `<p class="error">✗ 失败: ${error.message}</p>`;
+                console.error(error);
+            }
+        }
+        
+        // 页面加载后自动测试
+        window.onload = () => {
+            log('页面加载完成');
+            testAPI();
+        };
+    </script>
+</body>
+</html>

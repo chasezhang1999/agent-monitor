@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API 测试</h1>
+    <button onclick="testAPI()">点击测试 API</button>
+    <pre id="output"></pre>
+    
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = '加载中...';
+            
+            try {
+                const response = await fetch('/api/report?days=30');
+                const data = await response.json();
+                
+                output.textContent = JSON.stringify(data, null, 2);
+                
+                // 测试关键字段
+                console.log('total_cost_cny:', data.total_cost_cny);
+                console.log('total_tokens:', data.total_tokens);
+                console.log('by_model:', Object.keys(data.by_model || {}));
+            } catch (error) {
+                output.textContent = '错误: ' + error.message;
+                console.error(error);
+            }
+        }
+        
+        // 页面加载后自动测试
+        window.onload = () => {
+            testAPI();
+        };
+    </script>
+</body>
+</html>
