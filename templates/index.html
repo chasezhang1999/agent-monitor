@@ -415,6 +415,7 @@
             <div class="filter-group">
                 <span class="filter-label">机器</span>
                 <select id="machineFilter" onchange="loadData()">
+                    <option value="local">本机</option>
                     <option value="all">全部机器</option>
                     <!-- 动态加载 -->
                 </select>
@@ -531,7 +532,8 @@
         // 加载数据
         async function loadData() {
             const days = document.getElementById('timeFilter').value;
-            const machine = document.getElementById('machineFilter')?.value || 'all';
+            const machineSelect = document.getElementById('machineFilter');
+            const machine = machineSelect ? machineSelect.value : 'local';
             
             try {
                 const response = await fetch(`/api/report?days=${days}&machine=${machine}`);

@@ -57,7 +57,7 @@ def create_app(monitor_instance=None):
     def api_report():
         """获取报告 API"""
         days = request.args.get('days', type=int, default=None)
-        machine_id = request.args.get('machine', default=None)
+        machine_id = request.args.get('machine', default='local')
         
         # 如果启用多机模式且请求聚合数据
         if multi_enabled and aggregator and machine_id == 'all':
