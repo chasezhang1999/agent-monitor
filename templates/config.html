@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Monitor - 价格配置</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 20px;
+        }
+        
+        h1 {
+            color: #60a5fa;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            color: #60a5fa;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e0e0e0;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            background: #334155;
+            border-color: #60a5fa;
+        }
+        
+        .btn-primary {
+            background: #60a5fa;
+            border-color: #60a5fa;
+            color: #0a0e27;
+        }
+        
+        .btn-primary:hover {
+            background: #3b82f6;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .model-card {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        
+        .model-name {
+            color: #60a5fa;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        
+        .price-label {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+        
+        .price-value {
+            color: #10b981;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #e0e0e0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
+            color: #10b981;
+        }
+        
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background: #1e293b;
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5em;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+        
+        .modal-close:hover {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Agent Monitor - 价格配置</h1>
+            <div class="subtitle">编辑模型价格和 Provider 倍率配置</div>
+        </header>
+        
+        <div id="alert"></div>
+        
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="section-title" style="margin: 0; border: none;">快速操作</h2>
+                <div>
+                    <button class="btn" onclick="location.href='/'">← 返回 Dashboard</button>
+                    <button class="btn" onclick="clearCache()">🗑️ 清除缓存</button>
+                    <button class="btn" onclick="loadConfig()">🔄 刷新配置</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">💰 模型价格配置（USD/M tokens）</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn-primary btn" onclick="showAddModelModal()">+ 添加新模型</button>
+            </div>
+            <div id="modelGrid" class="model-grid">
+                加载中...
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">🔌 Provider 倍率配置</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn-primary btn" onclick="showAddProviderModal()">+ 添加 Provider</button>
+            </div>
+            <div id="providerList">
+                加载中...
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加模型 Modal -->
+    <div id="addModelModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('addModelModal')">&times;</span>
+            <h2 style="color: #60a5fa; margin-bottom: 20px;">添加/编辑模型价格</h2>
+            <form onsubmit="saveModel(event)">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input type="text" id="modelName" required>
+                </div>
+                <div class="form-group">
+                    <label>Input (USD/M)</label>
+                    <input type="number" step="0.01" id="modelInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Output (USD/M)</label>
+                    <input type="number" step="0.01" id="modelOutput" required>
+                </div>
+                <div class="form-group">
+                    <label>Cache Write (USD/M)</label>
+                    <input type="number" step="0.01" id="modelCacheWrite" required>
+                </div>
+                <div class="form-group">
+                    <label>Cache Read (USD/M)</label>
+                    <input type="number" step="0.01" id="modelCacheRead" required>
+                </div>
+                <div style="text-align: right;">
+                    <button type="button" class="btn" onclick="closeModal('addModelModal')">取消</button>
+                    <button type="submit" class="btn-primary btn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 添加 Provider Modal -->
+    <div id="addProviderModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('addProviderModal')">&times;</span>
+            <h2 style="color: #60a5fa; margin-bottom: 20px;">添加/编辑 Provider 倍率</h2>
+            <form onsubmit="saveProvider(event)">
+                <div class="form-group">
+                    <label>Provider 名称</label>
+                    <input type="text" id="providerName" required>
+                </div>
+                <div class="form-group">
+                    <label>倍率</label>
+                    <input type="number" step="0.1" id="providerMultiplier" required>
+                </div>
+                <div style="text-align: right;">
+                    <button type="button" class="btn" onclick="closeModal('addProviderModal')">取消</button>
+                    <button type="submit" class="btn-primary btn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let config = {};
+        
+        // 加载配置
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config/pricing');
+                if (!response.ok) throw new Error('加载配置失败');
+                
+                config = await response.json();
+                renderModels();
+                renderProviders();
+            } catch (e) {
+                showAlert('加载配置失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 渲染模型列表
+        function renderModels() {
+            const grid = document.getElementById('modelGrid');
+            const models = config.standard_prices || {};
+            
+            if (Object.keys(models).length === 0) {
+                grid.innerHTML = '<p style="color: #94a3b8;">暂无模型配置</p>';
+                return;
+            }
+            
+            grid.innerHTML = Object.entries(models).map(([name, prices]) => `
+                <div class="model-card">
+                    <div class="model-name">${name}</div>
+                    <div class="price-row">
+                        <span class="price-label">Input:</span>
+                        <span class="price-value">$${prices.input}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">Output:</span>
+                        <span class="price-value">$${prices.output}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">Cache Write:</span>
+                        <span class="price-value">$${prices.cache_write}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">Cache Read:</span>
+                        <span class="price-value">$${prices.cache_read}</span>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick='editModel("${name}")'>编辑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 渲染 Provider 列表
+        function renderProviders() {
+            const list = document.getElementById('providerList');
+            const providers = config.provider_multipliers || {};
+            
+            if (Object.keys(providers).length === 0) {
+                list.innerHTML = '<p style="color: #94a3b8;">暂无 Provider 配置</p>';
+                return;
+            }
+            
+            list.innerHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">' +
+                Object.entries(providers).map(([name, multiplier]) => `
+                    <div style="background: #0f172a; padding: 15px; border-radius: 6px; border: 1px solid #334155;">
+                        <div style="color: #60a5fa; font-weight: 600; margin-bottom: 10px;">${name}</div>
+                        <div style="color: #10b981; font-size: 1.2em; font-family: 'Courier New', monospace;">${multiplier}x</div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn" style="font-size: 0.85em; padding: 6px 12px;" onclick='editProvider("${name}")'>编辑</button>
+                        </div>
+                    </div>
+                `).join('') +
+            '</div>';
+        }
+        
+        // 显示/隐藏 Modal
+        function showAddModelModal() {
+            document.getElementById('modelName').value = '';
+            document.getElementById('modelInput').value = '';
+            document.getElementById('modelOutput').value = '';
+            document.getElementById('modelCacheWrite').value = '';
+            document.getElementById('modelCacheRead').value = '';
+            document.getElementById('addModelModal').style.display = 'block';
+        }
+        
+        function showAddProviderModal() {
+            document.getElementById('providerName').value = '';
+            document.getElementById('providerMultiplier').value = '';
+            document.getElementById('addProviderModal').style.display = 'block';
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        
+        // 编辑模型
+        function editModel(name) {
+            const model = config.standard_prices[name];
+            document.getElementById('modelName').value = name;
+            document.getElementById('modelInput').value = model.input;
+            document.getElementById('modelOutput').value = model.output;
+            document.getElementById('modelCacheWrite').value = model.cache_write;
+            document.getElementById('modelCacheRead').value = model.cache_read;
+            document.getElementById('addModelModal').style.display = 'block';
+        }
+        
+        // 编辑 Provider
+        function editProvider(name) {
+            const multiplier = config.provider_multipliers[name];
+            document.getElementById('providerName').value = name;
+            document.getElementById('providerMultiplier').value = multiplier;
+            document.getElementById('addProviderModal').style.display = 'block';
+        }
+        
+        // 保存模型
+        async function saveModel(event) {
+            event.preventDefault();
+            
+            const data = {
+                model: document.getElementById('modelName').value,
+                prices: {
+                    input: parseFloat(document.getElementById('modelInput').value),
+                    output: parseFloat(document.getElementById('modelOutput').value),
+                    cache_write: parseFloat(document.getElementById('modelCacheWrite').value),
+                    cache_read: parseFloat(document.getElementById('modelCacheRead').value)
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/config/pricing/model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    closeModal('addModelModal');
+                    await loadConfig();
+                } else {
+                    showAlert('保存失败: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showAlert('保存失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 保存 Provider
+        async function saveProvider(event) {
+            event.preventDefault();
+            
+            const data = {
+                provider: document.getElementById('providerName').value,
+                multiplier: parseFloat(document.getElementById('providerMultiplier').value)
+            };
+            
+            try {
+                const response = await fetch('/api/config/pricing/provider', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    closeModal('addProviderModal');
+                    await loadConfig();
+                } else {
+                    showAlert('保存失败: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showAlert('保存失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 清除缓存
+        async function clearCache() {
+            if (!confirm('确定要清除所有缓存吗？')) return;
+            
+            try {
+                const response = await fetch('/api/cache/clear', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('缓存已清除', 'success');
+                } else {
+                    showAlert('清除失败: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showAlert('清除失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 显示提示
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = 'alert alert-' + type;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 初始化
+        loadConfig();
+    </script>
+</body>
+</html>

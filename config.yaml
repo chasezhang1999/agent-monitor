@@ -1,0 +1,128 @@
+# Agent Monitor Configuration
+# 监控 Hermes 和 OpenCode 的 token 使用和费用
+
+# 数据源配置
+sources:
+  hermes:
+    enabled: true
+    db_path: C:\Users\xczha\AppData\Local\hermes\state.db
+    config_path: C:\Users\xczha\AppData\Local\hermes\config.yaml
+    
+  opencode:
+    enabled: true
+    db_path: C:\Users\xczha\.local\share\opencode\opencode.db
+    config_path: C:\Users\xczha\.config\opencode\opencode.jsonc
+
+# 价格换算规则
+pricing:
+  # apiclaude 价格公式: actual CNY/M = standard USD/M * multiplier / 12
+  # 或反推: standard USD/M = actual CNY/M * 12 / multiplier
+  cny_to_usd_rate: 12  # 1 CNY = 12 USD (用户约定)
+  
+  # 标准 USD 价格（per million tokens）
+  # 用于反推和验证
+  standard_prices:
+    # OpenAI 模型
+    gpt-5.6-sol:
+      input: 5
+      output: 30
+      cache_write: 6.25
+      cache_read: 0.5
+    gpt-5.6-terra:
+      input: 2
+      output: 12
+      cache_write: 3.125
+      cache_read: 0.25
+    gpt-5.6-luna:
+      input: 1
+      output: 6
+      cache_write: 1.25
+      cache_read: 0.1
+    
+    # Claude 模型
+    claude-fable-5:
+      input: 10
+      output: 50
+      cache_write: 12.5
+      cache_read: 1
+    claude-opus-5:
+      input: 5
+      output: 25
+      cache_write: 6.25
+      cache_read: 0.5
+    claude-sonnet-5:
+      input: 2
+      output: 10
+      cache_write: 2.5
+      cache_read: 0.2
+    
+    # DeepSeek 模型
+    deepseek-v4-flash:
+      input: 0.2
+      output: 0.6
+      cache_write: 0.1
+      cache_read: 0.02
+    deepseek-v4-pro:
+      input: 2
+      output: 8
+      cache_write: 1
+      cache_read: 0.2
+    
+    # Moonshot (Kimi) 模型
+    kimi-k3:
+      input: 1
+      output: 1
+      cache_write: 0
+      cache_read: 0
+  
+  # Provider 倍率配置
+  # 用于从 provider 名称推断实际倍率
+  provider_multipliers:
+    openai_2x: 2.2
+    anthropic_18x: 18.0
+    anthropic_3x: 2.8
+    anthropic_1x: 1.0
+    anthropic_daily: 1.0
+    deepseek: 1.0
+    opencode-go: 1.0
+    auto: 1.0
+  
+  # 价格覆盖（优先级最高）
+  # 格式: model@provider: {input, output, cache_write, cache_read} (CNY/M)
+  price_overrides:
+    # 示例：如果你有特殊的价格协议，在这里配置
+    # gpt-5.6-sol@openai_2x:
+    #   input: 0.92
+    #   output: 5.5
+    #   cache_write: 1.15
+    #   cache_read: 0.092
+
+# 监控配置
+monitor:
+  # 数据采集间隔（秒）
+  poll_interval: 300  # 5分钟
+  
+  # 统计时间窗口（天）
+  default_windows: [1, 7, 30, 90]
+  
+  # Web Dashboard 配置
+  dashboard:
+    enabled: true
+    host: 127.0.0.1
+    port: 8899
+    auto_refresh_seconds: 60
+  
+  # 日志配置
+  logging:
+    level: INFO
+    file: logs/monitor.log
+    max_size_mb: 10
+    backup_count: 5
+
+# 告警配置（可选）
+alerts:
+  enabled: false
+  # 日均消费超过阈值时告警
+  daily_cost_threshold_cny: 50
+  # token 使用超过阈值时告警
+  daily_token_threshold: 10000000  # 10M tokens
