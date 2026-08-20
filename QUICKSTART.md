@@ -19,7 +19,13 @@ Agent Monitor 是一个完整的 AI Agent 使用监控系统，主动探查 Herm
 ### 1. 安装依赖
 
 ```bash
-cd C:\Users\xczha\agent-monitor
+cd agent-monitor
+
+# macOS / Linux（推荐虚拟环境）
+python3 -m venv .venv
+.venv/bin/pip install flask pyyaml
+
+# Windows
 pip install flask pyyaml
 ```
 
@@ -35,15 +41,14 @@ python cli.py -d 7
 
 ### 3. 启动 Dashboard
 
-**方式 A：双击运行**
-```
-双击 start.bat
+**macOS / Linux**
+```bash
+./start.sh
+# 或 .venv/bin/python dashboard.py
 ```
 
-**方式 B：命令行**
-```bash
-python dashboard.py
-```
+**Windows：双击 `start.bat`**
+或命令行 `python dashboard.py`
 
 然后访问: http://127.0.0.1:8899
 
@@ -244,12 +249,13 @@ python cli.py -d 30 --json | jq '.statistics.total.actual_cost_cny'
 ### 问题 1：数据库不存在
 
 ```
-ERROR: Hermes DB not found: C:\Users\xczha\AppData\Local\hermes\state.db
+ERROR: Hermes DB not found: ...
 ```
 
 **解决方法**：
-1. 检查 Hermes 是否已运行过
-2. 确认 `config.yaml` 中的路径配置正确
+1. 确认 Hermes / OpenCode 已经运行过（产生过数据）
+2. `config.yaml` 里 `db_path` 默认是 `auto`，会按当前系统自动探测路径；
+   如果你的安装位置不标准，改成显式绝对路径（各系统默认路径见 `paths.py`）
 
 ### 问题 2：价格为 0
 
@@ -268,10 +274,12 @@ WARNING: Unknown model pricing: new-model
 ### 问题 4：OpenCode 配置读取失败
 
 ```
-WARNING: Failed to read OpenCode config: Invalid control character
+WARNING: Failed to read OpenCode config: ...
 ```
 
-**影响**：只会影响 Provider 显示名称，不影响核心统计功能。可以忽略。
+**说明**：这个警告只影响 Provider 显示名称，不影响核心统计功能。
+旧版在解析 `opencode.json` 里的 `//` 注释时可能误删 URL（如 `https://`），
+现已改为字符串感知的 JSONC 解析，正常情况下不会再出现。
 
 ---
 

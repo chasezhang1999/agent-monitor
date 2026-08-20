@@ -14,6 +14,54 @@ from dataclasses import dataclass, asdict
 import logging
 import hashlib
 
+from paths import resolve_path
+
+
+def _strip_jsonc(text):
+    """把 JSONC（带 // 和 /* */ 注释、允许尾部逗号）转成严格 JSON。
+
+    逐字符扫描，跳过字符串内的内容，避免误删 URL 里的 `//`（例如
+    `"base_url": "https://..."`）。
+    """
+    import re
+    out = []
+    i = 0
+    n = len(text)
+    in_string = False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            out.append(ch)
+            if ch == '\\' and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == '/' and i + 1 < n and text[i + 1] == '/':  # 行注释
+            while i < n and text[i] != '\n':
+                i += 1
+            continue
+        if ch == '/' and i + 1 < n and text[i + 1] == '*':  # 块注释
+            i += 2
+            while i + 1 < n and not (text[i] == '*' and text[i + 1] == '/'):
+                i += 1
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    stripped = ''.join(out)
+    # 去掉 JSON 不允许的尾部逗号
+    stripped = re.sub(r',\s*([}\]])', r'\1', stripped)
+    return stripped
+
 @dataclass
 class UsageRecord:
     """使用记录"""
@@ -217,7 +265,7 @@ class AgentMonitor:
         if not source_config['enabled']:
             return []
         
-        db_path = source_config['db_path']
+        db_path = resolve_path('hermes', source_config.get('db_path'), 'db')
         if not Path(db_path).exists():
             self.logger.error(f"Hermes DB not found: {db_path}")
             return []
@@ -305,7 +353,7 @@ class AgentMonitor:
         if not source_config['enabled']:
             return []
         
-        db_path = source_config['db_path']
+        db_path = resolve_path('opencode', source_config.get('db_path'), 'db')
         if not Path(db_path).exists():
             self.logger.error(f"OpenCode DB not found: {db_path}")
             return []
@@ -397,7 +445,7 @@ class AgentMonitor:
         """获取 provider 显示名称"""
         # 尝试从配置中读取
         if agent == 'hermes':
-            config_path = self.config['sources']['hermes']['config_path']
+            config_path = resolve_path('hermes', self.config['sources']['hermes'].get('config_path'), 'config')
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = yaml.safe_load(f)
@@ -408,22 +456,10 @@ class AgentMonitor:
                 self.logger.warning(f"Failed to read Hermes config: {e}")
         
         elif agent == 'opencode':
-            config_path = self.config['sources']['opencode']['config_path']
+            config_path = resolve_path('opencode', self.config['sources']['opencode'].get('config_path'), 'config')
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
-                    # OpenCode 使用 jsonc 格式，需要移除注释和尾部逗号
-                    content = f.read()
-                    # 移除 // 注释
-                    lines = []
-                    for line in content.split('\n'):
-                        if '//' in line:
-                            line = line[:line.index('//')]
-                        lines.append(line)
-                    content = '\n'.join(lines)
-                    # 移除尾部逗号（JSON 不允许）
-                    import re
-                    content = re.sub(r',(\s*[}\]])', r'\1', content)
-                    config = json.loads(content)
+                    config = json.loads(_strip_jsonc(f.read()))
                     providers = config.get('provider', {})
                     if provider in providers:
                         return providers[provider].get('name', provider)

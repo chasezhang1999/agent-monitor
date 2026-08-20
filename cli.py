@@ -1,132 +1,204 @@
 #!/usr/bin/env python3
 """
-CLI 命令行工具 - 快速查看统计
+CLI 命令行工具
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+import logging
+
 from monitor import AgentMonitor
+from multi_machine import sync_data, MultiMachineAggregator
 
-def format_number(n):
-    """格式化数字"""
-    if n >= 1_000_000:
-        return f"{n/1_000_000:.2f}M"
-    elif n >= 1_000:
-        return f"{n/1_000:.1f}K"
+
+def setup_logging(level='INFO'):
+    """配置日志"""
+    logging.basicConfig(
+        level=getattr(logging, level),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+
+def cmd_report(args):
+    """生成报告"""
+    setup_logging(args.verbose and 'DEBUG' or 'INFO')
+    
+    monitor = AgentMonitor(args.config)
+    
+    # 如果启用多机模式，先同步
+    if monitor.config.get('multi_machine', {}).get('enabled'):
+        sync_config = monitor.config['multi_machine']
+        if sync_config.get('auto_sync_on_start', True):
+            print("🔄 Syncing data from all machines...")
+            sync_dir = Path(sync_config['sync_dir']).expanduser()
+            remote_url = sync_config.get('remote_url') or None
+            
+            if sync_data(monitor, sync_dir, remote_url):
+                print("✅ Sync completed\n")
+            else:
+                print("⚠️  Sync failed, using local data only\n")
+    
+    report = monitor.generate_report(days=args.days)
+    
+    print(f"\n📊 Agent Monitor Report - Last {args.days or 'All'} Days")
+    print("=" * 60)
+    print(f"Total Cost: ¥{report['total_cost_cny']:.2f} CNY")
+    print(f"Total Tokens: {report['total_tokens']:,}")
+    print(f"Total Requests: {report['total_requests']:,}")
+    
+    if report.get('by_model'):
+        print("\n📈 By Model:")
+        for model, stats in sorted(report['by_model'].items(), 
+                                   key=lambda x: x[1]['actual_cost_cny'], 
+                                   reverse=True):
+            print(f"  {model}:")
+            print(f"    Cost: ¥{stats['actual_cost_cny']:.2f}")
+            print(f"    Tokens: {stats['input_tokens'] + stats['output_tokens']:,}")
+            print(f"    Requests: {stats['request_count']}")
+
+
+def cmd_sync(args):
+    """手动同步数据"""
+    setup_logging(args.verbose and 'DEBUG' or 'INFO')
+    
+    monitor = AgentMonitor(args.config)
+    sync_config = monitor.config.get('multi_machine', {})
+    
+    if not sync_config.get('enabled'):
+        print("❌ Multi-machine sync is not enabled in config.yaml")
+        sys.exit(1)
+    
+    sync_dir = Path(sync_config['sync_dir']).expanduser()
+    remote_url = sync_config.get('remote_url') or None
+    
+    print("🔄 Syncing data...")
+    if sync_data(monitor, sync_dir, remote_url):
+        print("✅ Sync completed successfully")
     else:
-        return str(n)
+        print("❌ Sync failed")
+        sys.exit(1)
 
-def print_report(report, show_details=False):
-    """打印报告"""
-    stats = report['statistics']
-    total = stats['total']
+
+def cmd_machines(args):
+    """列出所有机器"""
+    setup_logging(args.verbose and 'DEBUG' or 'INFO')
     
-    print("\n" + "="*70)
-    print(f"📊 Agent Monitor Report - {report.get('period_days', 'All')} days")
-    print("="*70)
+    monitor = AgentMonitor(args.config)
+    sync_config = monitor.config.get('multi_machine', {})
     
-    # 总览
-    print("\n【总览】")
-    print(f"  会话数:        {total['sessions']:>8}")
-    print(f"  API 调用:      {total['api_calls']:>8,}")
-    print(f"  总 Token:      {format_number(total['total_tokens']):>8}")
-    print(f"  ├─ 输入:       {format_number(total['input_tokens']):>8}")
-    print(f"  ├─ 输出:       {format_number(total['output_tokens']):>8}")
-    print(f"  ├─ 推理:       {format_number(total['reasoning_tokens']):>8}")
-    print(f"  ├─ 缓存读:     {format_number(total['cache_read_tokens']):>8}")
-    print(f"  └─ 缓存写:     {format_number(total['cache_write_tokens']):>8}")
-    print(f"  缓存命中率:    {total['cache_hit_rate']*100:>7.1f}%")
-    print(f"  标准费用:      ${total['standard_cost_usd']:>7.4f} USD")
-    print(f"  实际费用:      ¥{total['actual_cost_cny']:>7.4f} CNY")
+    if not sync_config.get('enabled'):
+        print("❌ Multi-machine sync is not enabled in config.yaml")
+        sys.exit(1)
     
-    # 按 Agent
-    print("\n【按 Agent】")
-    print(f"  {'Agent':<12} {'会话':<8} {'Token':<12} {'标准费用':<12} {'实际费用':<12}")
-    print("  " + "-"*60)
-    for agent, agent_stats in stats['by_agent'].items():
-        print(f"  {agent:<12} {agent_stats['sessions']:<8} "
-              f"{format_number(agent_stats['total_tokens']):<12} "
-              f"${agent_stats['standard_cost_usd']:<11.4f} "
-              f"¥{agent_stats['actual_cost_cny']:<11.4f}")
+    sync_dir = Path(sync_config['sync_dir']).expanduser()
+    aggregator = MultiMachineAggregator(sync_dir)
     
-    # 按模型 Top 10
-    print("\n【按模型 Top 10】")
-    print(f"  {'模型':<25} {'会话':<6} {'Token':<12} {'命中率':<8} {'实际费用':<12}")
-    print("  " + "-"*70)
-    sorted_models = sorted(stats['by_model'].items(), 
-                          key=lambda x: x[1]['total_tokens'], 
-                          reverse=True)
-    for model, model_stats in sorted_models[:10]:
-        print(f"  {model:<25} {model_stats['sessions']:<6} "
-              f"{format_number(model_stats['total_tokens']):<12} "
-              f"{model_stats['cache_hit_rate']*100:>6.1f}% "
-              f"¥{model_stats['actual_cost_cny']:<11.4f}")
+    snapshots = aggregator.load_all_snapshots()
     
-    # 详细信息
-    if show_details:
-        print("\n【按 Provider】")
-        print(f"  {'Provider':<30} {'会话':<6} {'Token':<12} {'费用 (CNY)':<12}")
-        print("  " + "-"*65)
-        sorted_providers = sorted(stats['by_provider'].items(),
-                                 key=lambda x: x[1]['total_tokens'],
-                                 reverse=True)
-        for provider, provider_stats in sorted_providers:
-            print(f"  {provider:<30} {provider_stats['sessions']:<6} "
-                  f"{format_number(provider_stats['total_tokens']):<12} "
-                  f"¥{provider_stats['actual_cost_cny']:<11.4f}")
+    if not snapshots:
+        print("📭 No machine data found")
+        print(f"   Sync directory: {sync_dir}")
+        return
     
-    print("\n" + "="*70 + "\n")
+    print(f"\n🖥️  Found {len(snapshots)} machines:")
+    print("=" * 60)
+    
+    for machine_id, snapshot in sorted(snapshots.items()):
+        hostname = snapshot.get('hostname', machine_id)
+        timestamp = snapshot.get('timestamp', 'N/A')
+        print(f"\n  {machine_id}")
+        print(f"    Hostname: {hostname}")
+        print(f"    Last Update: {timestamp}")
+        
+        # 显示 30 天统计
+        reports = snapshot.get('reports', {})
+        if '30d' in reports and reports['30d']:
+            report = reports['30d']
+            print(f"    30d Cost: ¥{report.get('total_cost_cny', 0):.2f}")
+            print(f"    30d Tokens: {report.get('total_tokens', 0):,}")
+
+
+def cmd_dashboard(args):
+    """启动 Web Dashboard"""
+    setup_logging(args.verbose and 'DEBUG' or 'INFO')
+    
+    from dashboard import create_app
+    
+    monitor = AgentMonitor(args.config)
+    
+    # 如果启用多机模式且配置了自动同步，启动时同步一次
+    if monitor.config.get('multi_machine', {}).get('enabled'):
+        sync_config = monitor.config['multi_machine']
+        if sync_config.get('auto_sync_on_start', True):
+            print("🔄 Syncing data before starting dashboard...")
+            sync_dir = Path(sync_config['sync_dir']).expanduser()
+            remote_url = sync_config.get('remote_url') or None
+            
+            if sync_data(monitor, sync_dir, remote_url):
+                print("✅ Sync completed\n")
+            else:
+                print("⚠️  Sync failed, using local data only\n")
+    
+    app = create_app(monitor)
+    
+    dashboard_config = monitor.config.get('monitor', {}).get('dashboard', {})
+    host = args.host or dashboard_config.get('host', '127.0.0.1')
+    port = args.port or dashboard_config.get('port', 8899)
+    
+    print(f"\n🚀 Starting dashboard at http://{host}:{port}")
+    print("   Press Ctrl+C to stop\n")
+    
+    app.run(host=host, port=port, debug=args.debug)
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Agent Monitor - 监控 Hermes 和 OpenCode 的使用情况',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-示例:
-  %(prog)s                    # 全部历史
-  %(prog)s -d 1               # 最近 24 小时
-  %(prog)s -d 7               # 最近 7 天
-  %(prog)s -d 30 --details    # 最近 30 天（详细模式）
-  %(prog)s --json             # 输出 JSON 格式
-        """
+        description='Agent Monitor - Monitor token usage and costs'
     )
-    
-    parser.add_argument('-d', '--days', type=int, default=None,
-                       help='统计天数（默认全部）')
-    parser.add_argument('--details', action='store_true',
-                       help='显示详细信息')
-    parser.add_argument('--json', action='store_true',
-                       help='输出 JSON 格式')
     parser.add_argument('-c', '--config', default='config.yaml',
-                       help='配置文件路径')
+                       help='Config file path (default: config.yaml)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                       help='Verbose output')
+    
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    
+    # report 命令
+    report_parser = subparsers.add_parser('report', help='Generate usage report')
+    report_parser.add_argument('-d', '--days', type=int, default=30,
+                              help='Time window in days (default: 30)')
+    report_parser.set_defaults(func=cmd_report)
+    
+    # sync 命令
+    sync_parser = subparsers.add_parser('sync', help='Sync data with Git repo')
+    sync_parser.set_defaults(func=cmd_sync)
+    
+    # machines 命令
+    machines_parser = subparsers.add_parser('machines', help='List all machines')
+    machines_parser.set_defaults(func=cmd_machines)
+    
+    # dashboard 命令（默认）
+    dashboard_parser = subparsers.add_parser('dashboard', help='Start web dashboard')
+    dashboard_parser.add_argument('--host', help='Host to bind to')
+    dashboard_parser.add_argument('--port', type=int, help='Port to bind to')
+    dashboard_parser.add_argument('--debug', action='store_true', help='Debug mode')
+    dashboard_parser.set_defaults(func=cmd_dashboard)
     
     args = parser.parse_args()
     
-    # 初始化
-    try:
-        monitor = AgentMonitor(args.config)
-    except Exception as e:
-        print(f"错误: 无法加载配置文件 - {e}", file=sys.stderr)
-        return 1
-    
-    # 生成报告
-    try:
-        report = monitor.get_report(args.days)
-    except Exception as e:
-        print(f"错误: 生成报告失败 - {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        return 1
-    
-    # 输出
-    if args.json:
-        import json
-        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    # 默认启动 dashboard
+    if not args.command:
+        args.command = 'dashboard'
+        args.host = None
+        args.port = None
+        args.debug = False
+        cmd_dashboard(args)
     else:
-        print_report(report, args.details)
-    
-    return 0
+        if hasattr(args, 'func'):
+            args.func(args)
+        else:
+            parser.print_help()
+
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()

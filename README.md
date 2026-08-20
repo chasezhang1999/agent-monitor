@@ -1,173 +1,206 @@
-# Agent Monitor
+# Agent Monitor - 快速开始
 
-一个功能强大的 AI Agent 使用监控系统，用于监控 Hermes 和 OpenCode 的 token 使用和费用统计。
-
-<div align="center">
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8+-green.svg)
-![Status](https://img.shields.io/badge/status-production-success.svg)
-
-</div>
+一个跨平台的 AI Agent 监控工具，追踪 Hermes 和 OpenCode 的 token 使用和费用。
 
 ## ✨ 特性
 
-- 🔍 **主动探查** - 直接读取 SQLite 数据库，零侵入设计
-- 🚀 **超快缓存** - 221x 加速比，秒级响应
-- 📊 **专业图表** - Chart.js 驱动的 4 种可视化图表
-- ⚙️ **在线配置** - Web UI 编辑价格和倍率配置
-- 🎯 **多维分析** - Agent/Model/Provider 多角度统计
-- 💰 **价格透明** - 完整的计算逻辑和价格配置展示
+- 📊 实时监控 token 使用和费用
+- 🌐 Web Dashboard 可视化
+- 🖥️ **多机数据同步**（通过 Git 私有仓库）
+- 💰 自动计算实际费用（支持 apiclaude 倍率）
+- 📈 多时间窗口统计（1天/7天/30天/90天）
+- 🎨 **DeepSeek 风格 UI**（即将推出）
 
-## 🎬 快速开始
+## 🚀 快速开始
 
-### 安装依赖
+### 单机使用
 
 ```bash
+# 1. 克隆项目
+git clone https://github.com/chasezhang1999/agent-monitor.git
 cd agent-monitor
-pip install -r requirements.txt
+
+# 2. 启动（会自动创建虚拟环境并安装依赖）
+./start.sh          # macOS/Linux
+# 或
+start.bat           # Windows
+
+# 3. 打开浏览器访问
+# http://127.0.0.1:8899
 ```
 
-### 配置
+### 多机数据同步
 
-编辑 `config.yaml`，确认数据库路径正确：
-
-```yaml
-sources:
-  hermes:
-    db_path: C:\Users\xczha\AppData\Local\hermes\state.db
-  opencode:
-    db_path: C:\Users\xczha\.local\share\opencode\opencode.db
-```
-
-### 启动
+如果你在多台机器上使用 AI Agent，想统一查看所有机器的用量：
 
 ```bash
-# 方式 1：双击启动
-双击 start.bat
+# 1. 首台机器：运行设置向导
+python3 setup_sync.py
 
-# 方式 2：命令行
-python dashboard.py
+# 按提示输入 Git 私有仓库 URL（如 git@github.com:你的用户名/agent-monitor-data.git）
+
+# 2. 其他机器：重复上述步骤（使用相同的仓库 URL）
+
+# 3. 启动 Dashboard（会自动同步）
+./start.sh
 ```
 
-访问：http://127.0.0.1:8899
+**工作原理：**
+- 每次启动自动 pull 最新数据
+- 导出本机快照并 push
+- Dashboard 自动聚合所有机器的数据
 
-## 📊 功能展示
+详细说明：[多机同步指南](MULTI_MACHINE_GUIDE.md)
 
-### 主 Dashboard
-- 📈 **Token 使用排行** - 堆叠柱状图展示 Top 10 模型
-- 💰 **费用分布** - 环形图显示费用占比
-- 💾 **缓存命中率** - 横向柱状图展示缓存效率
-- 🔌 **Provider 分布** - 饼图显示 Provider 使用情况
+## 📋 系统要求
 
-### 配置页面
-- ✏️ 编辑模型价格（input/output/cache_write/cache_read）
-- 🔧 编辑 Provider 倍率
-- 🗑️ 清除缓存
-- 💾 实时保存到 YAML
+- Python 3.8+
+- Git（多机同步需要）
+- Hermes 或 OpenCode（至少一个）
 
-### 详情面板
-- 点击任意模型行查看：
-  - Token 统计（具体数字）
-  - 缓存命中率计算（公式 + 分步）
-  - 费用计算（价格配置 + 公式 + 结果）
+### 支持的平台
 
-## 🛠️ 技术栈
+- ✅ macOS
+- ✅ Windows
+- ✅ Linux
 
-- **后端**: Python 3.8+, Flask, SQLite3
-- **前端**: HTML5, CSS3, JavaScript (ES6+)
-- **图表**: Chart.js 4.4
-- **配置**: YAML
-
-## 📂 项目结构
-
-```
-agent-monitor/
-├── monitor.py              # 核心监控引擎
-├── dashboard.py            # Flask Web 服务器
-├── cli.py                  # 命令行工具
-├── config.yaml             # 价格配置
-├── templates/
-│   ├── index.html          # 主 Dashboard
-│   └── config.html         # 配置页面
-├── cache/                  # 缓存数据库
-├── logs/                   # 运行日志
-├── requirements.txt        # Python 依赖
-├── start.bat               # Windows 启动脚本
-└── README.md
-```
-
-## 💡 核心功能
-
-### 1. 数据缓存
-- **221x 加速比** - 第二次查询仅需 0.00 秒
-- SQLite 缓存数据库
-- 60 分钟自动过期
-- 按小时缓存策略
-
-### 2. 多维统计
-- 按 Agent（Hermes / OpenCode）
-- 按 Model（Top N 排行）
-- 按 Provider（分布分析）
-- 按时间窗口（1/7/30/90 天）
-
-### 3. 价格计算
-- 三层价格机制：标准价格 → Provider 倍率 → 价格覆盖
-- 公式：`actual CNY = standard USD × multiplier / 12`
-- 完整的计算逻辑展示
-
-## 📖 使用文档
-
-- [快速开始](QUICKSTART.md) - 3 步上手指南
-- [完整文档](README.md) - 详细功能说明
-- [新功能介绍](README_NEW_FEATURES.md) - 最新功能说明
-- [实施计划](IMPLEMENTATION_PLAN.md) - 技术方案
+数据库路径自动探测，一份配置跨平台通用。
 
 ## 🔧 命令行工具
 
 ```bash
-# 查看最近 7 天统计
-python cli.py -d 7
+# 启动 Web Dashboard
+python3 cli.py dashboard
 
-# 查看最近 30 天（详细模式）
-python cli.py -d 30 --details
+# 生成报告
+python3 cli.py report --days 30
 
-# 导出 JSON
-python cli.py -d 7 --json > report.json
+# 同步数据（多机模式）
+python3 cli.py sync
+
+# 查看所有机器
+python3 cli.py machines
 ```
 
-## 🎨 配置示例
+## ⚙️ 配置
 
-### 添加新模型价格
-
-```yaml
-pricing:
-  standard_prices:
-    your-model:
-      input: 5
-      output: 30
-      cache_write: 6.25
-      cache_read: 0.5
-```
-
-### 配置 Provider 倍率
+编辑 `config.yaml`：
 
 ```yaml
+# 数据源（自动探测路径）
+sources:
+  hermes:
+    enabled: true
+    db_path: auto        # 自动探测
+  opencode:
+    enabled: true
+    db_path: auto
+
+# 多机同步
+multi_machine:
+  enabled: true          # 启用多机功能
+  sync_dir: ~/.agent-monitor-sync
+  remote_url: "git@github.com:username/agent-monitor-data.git"
+  auto_sync_on_start: true
+
+# 价格配置（支持 apiclaude 倍率）
 pricing:
+  cny_to_usd_rate: 12
   provider_multipliers:
-    your_provider: 2.2
+    openai_2x: 2.2
+    anthropic_3x: 2.8
+```
+
+完整配置说明：查看 `config.yaml` 中的注释
+
+## 📊 Dashboard 功能
+
+打开 http://127.0.0.1:8899 后可以看到：
+
+### 当前功能
+- 📈 费用和 token 趋势图
+- 🔍 按模型/Provider 分组统计
+- ⏱️ 多时间窗口切换
+- 📉 缓存命中率分析
+- 🖥️ **多机器聚合视图**（新）
+
+### 即将推出（v2.0）
+- 🎨 DeepSeek 风格 UI 重构
+- 📊 ECharts 交互式图表
+- 🔄 实时数据刷新
+- 📤 数据导出（CSV/Excel）
+- 📱 移动端适配
+
+## 🔐 隐私说明
+
+- ✅ 只读取数据库，不修改任何文件
+- ✅ 数据完全本地处理
+- ✅ Git 同步建议使用私有仓库
+- ❌ 不上传对话内容
+- ❌ 不上传 API Key
+
+## 📚 文档
+
+- [多机同步指南](MULTI_MACHINE_GUIDE.md) - 详细的多机设置教程
+- [使用说明.txt](使用说明.txt) - 原版详细说明
+- [CHANGELOG.md](CHANGELOG.md) - 版本更新记录
+
+## 🆘 故障排除
+
+### "Permission denied" (Git push 失败)
+
+配置 SSH Key：
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+# 将 ~/.ssh/id_ed25519.pub 添加到 GitHub
+```
+
+### 找不到数据库
+
+检查数据库路径：
+```bash
+# macOS/Linux
+ls ~/.hermes/state.db
+ls ~/.local/share/opencode/opencode.db
+
+# Windows
+dir %LOCALAPPDATA%\hermes\state.db
+dir %USERPROFILE%\.local\share\opencode\opencode.db
+```
+
+如果路径不同，在 `config.yaml` 中显式配置。
+
+### 数据不同步
+
+```bash
+# 手动测试同步
+python3 cli.py sync -v
+
+# 查看日志
+tail -f logs/monitor.log
 ```
 
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
-## 📝 许可证
+计划中的功能：
+- [ ] DeepSeek 风格 UI 重构
+- [ ] 图表交互优化
+- [ ] 数据导出功能
+- [ ] 告警通知
+- [ ] Docker 部署
+
+## 📄 许可
 
 MIT License
 
+## 🙏 致谢
+
+- Hermes Agent by Nous Research
+- OpenCode CLI
+- DeepSeek (UI 设计灵感)
+
 ---
 
-**开发者**: Kiro (Claude Opus 5)  
-**版本**: v1.2  
-**状态**: Production Ready ✅
+💡 **提示：** 首次使用建议先看 [多机同步指南](MULTI_MACHINE_GUIDE.md)，了解如何配置跨机器数据聚合。

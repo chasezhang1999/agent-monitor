@@ -2,16 +2,32 @@
 # 监控 Hermes 和 OpenCode 的 token 使用和费用
 
 # 数据源配置
+# db_path / config_path 支持三种写法：
+#   auto  —— 按当前系统自动探测默认路径（推荐，一份配置跨 Windows/macOS/Linux 通用）
+#   留空  —— 等价于 auto
+#   绝对路径 —— 显式覆盖（含 ~ 或环境变量会自动展开）
+# 各系统默认路径见 paths.py 里的 PLATFORM_DEFAULTS。
 sources:
   hermes:
     enabled: true
-    db_path: C:\Users\xczha\AppData\Local\hermes\state.db
-    config_path: C:\Users\xczha\AppData\Local\hermes\config.yaml
+    db_path: auto
+    config_path: auto
     
   opencode:
     enabled: true
-    db_path: C:\Users\xczha\.local\share\opencode\opencode.db
-    config_path: C:\Users\xczha\.config\opencode\opencode.jsonc
+    db_path: auto
+    config_path: auto
+
+# 多机同步配置（新增）
+multi_machine:
+  enabled: true  # 启用多机数据聚合
+  sync_dir: ~/.agent-monitor-sync  # 本地同步目录（Git 仓库）
+  remote_url: ""  # Git 远程仓库 URL（留空则只本地，填写后自动 push/pull）
+  # 示例: https://github.com/username/agent-monitor-data.git
+  # 私有仓库需配置 SSH key 或 Personal Access Token
+  
+  auto_sync_on_start: true  # 启动时自动同步（pull → export → push）
+  show_machine_filter: true  # Dashboard 显示机器筛选器
 
 # 价格换算规则
 pricing:
@@ -22,75 +38,81 @@ pricing:
   # 标准 USD 价格（per million tokens）
   # 用于反推和验证
   standard_prices:
-    # OpenAI 模型
-    gpt-5.6-sol:
-      input: 5
-      output: 30
-      cache_write: 6.25
-      cache_read: 0.5
-    gpt-5.6-terra:
-      input: 2
-      output: 12
-      cache_write: 3.125
-      cache_read: 0.25
-    gpt-5.6-luna:
-      input: 1
-      output: 6
-      cache_write: 1.25
-      cache_read: 0.1
+    # OpenAI 官方价格
+    gpt-4o:
+      input: 2.5
+      output: 10.0
+      cache_write: 3.75
+      cache_read: 1.25
     
-    # Claude 模型
-    claude-fable-5:
-      input: 10
-      output: 50
-      cache_write: 12.5
-      cache_read: 1
+    gpt-4o-mini:
+      input: 0.15
+      output: 0.60
+      cache_write: 0.225
+      cache_read: 0.075
+    
+    o1-preview:
+      input: 15.0
+      output: 60.0
+      cache_write: 22.5
+      cache_read: 7.5
+    
+    o1-mini:
+      input: 3.0
+      output: 12.0
+      cache_write: 4.5
+      cache_read: 1.5
+    
+    # Anthropic Claude 官方价格
     claude-opus-5:
-      input: 5
-      output: 25
+      input: 5.0
+      output: 25.0
       cache_write: 6.25
       cache_read: 0.5
+    
     claude-sonnet-5:
-      input: 2
-      output: 10
+      input: 2.0
+      output: 10.0
       cache_write: 2.5
       cache_read: 0.2
     
-    # DeepSeek 模型
-    deepseek-v4-flash:
-      input: 0.2
-      output: 0.6
-      cache_write: 0.1
-      cache_read: 0.02
-    deepseek-v4-pro:
-      input: 2
-      output: 8
-      cache_write: 1
-      cache_read: 0.2
+    claude-fable-5:
+      input: 10.0
+      output: 50.0
+      cache_write: 12.5
+      cache_read: 1.0
     
-    # Moonshot (Kimi) 模型
+    # Moonshot Kimi
     kimi-k3:
-      input: 1
-      output: 1
-      cache_write: 0
-      cache_read: 0
+      input: 0.1
+      output: 0.1
+    
+    # DeepSeek 官方价格
+    deepseek-v4-flash:
+      input: 0.14
+      output: 0.28
+      cache_write: 0.07
+      cache_read: 0.014
+    
+    deepseek-v4-pro:
+      input: 1.0
+      output: 2.0
+      cache_write: 0.5
+      cache_read: 0.1
   
-  # Provider 倍率配置
-  # 用于从 provider 名称推断实际倍率
+  # Provider 倍率（apiclaude 分组）
   provider_multipliers:
-    openai_2x: 2.2
+    openai_2x: 2.2    # 实际是 2.2x
+    anthropic_3x: 2.8  # 实际是 2.8x
     anthropic_18x: 18.0
-    anthropic_3x: 2.8
     anthropic_1x: 1.0
-    anthropic_daily: 1.0
     deepseek: 1.0
-    opencode-go: 1.0
-    auto: 1.0
   
   # 价格覆盖（优先级最高）
-  # 格式: model@provider: {input, output, cache_write, cache_read} (CNY/M)
-  price_overrides:
-    # 示例：如果你有特殊的价格协议，在这里配置
+  # 格式: model@provider
+  # 直接填写实际 CNY/M 价格，覆盖计算结果
+  price_overrides: {}
+    # 示例：如果发现某个模型价格算得不对，在这里配置
     # gpt-5.6-sol@openai_2x:
     #   input: 0.92
     #   output: 5.5
